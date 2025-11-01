@@ -44,6 +44,9 @@ let mainWindow;
 let widgetWindow;
 let tray;
 
+// Flag to track if app is quitting
+app.isQuitting = false;
+
 // Single instance lock - prevent multiple app instances
 const gotTheLock = app.requestSingleInstanceLock();
 
@@ -51,17 +54,21 @@ if (!gotTheLock) {
   app.quit();
 } else {
   app.on("second-instance", () => {
-    // Someone tried to run a second instance, focus the existing window
+    // Someone tried to run a second instance, show the existing window
     if (mainWindow && !mainWindow.isDestroyed()) {
       if (mainWindow.isMinimized()) mainWindow.restore();
+      if (!mainWindow.isVisible()) mainWindow.show();
       mainWindow.focus();
+    } else {
+      // If main window was destroyed, create it again
+      createWindows();
     }
   });
 }
 
 // Disable disk cache to prevent "Access is denied" errors
-app.commandLine.appendSwitch('disable-http-cache');
-app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
+app.commandLine.appendSwitch("disable-http-cache");
+app.commandLine.appendSwitch("disable-gpu-shader-disk-cache");
 
 const DATA_FILE_DIR = path.join(app.getPath("userData"), "data");
 const DATA_FILE = path.join(DATA_FILE_DIR, "daily.json");
@@ -141,9 +148,31 @@ async function createWindows() {
 
   mainWindow.loadFile(path.join(__dirname, "src", "index.html"));
 
-  // Handle main window close event
+  // Handle main window close event - hide to tray
+  mainWindow.on("close", (event) => {
+    if (!app.isQuitting) {
+      event.preventDefault();
+      mainWindow.hide();
+      // Remove from taskbar when hidden
+      mainWindow.setSkipTaskbar(true);
+    }
+  });
+
   mainWindow.on("closed", () => {
     mainWindow = null;
+  });
+
+  // When user clicks taskbar icon while window is hidden, show it
+  mainWindow.on("show", () => {
+    // Restore to taskbar when shown
+    mainWindow.setSkipTaskbar(false);
+    mainWindow.focus();
+  });
+
+  // Handle taskbar icon click on Windows - restore from hidden state
+  mainWindow.on("restore", () => {
+    mainWindow.show();
+    mainWindow.focus();
   });
 
   createWidgetWindow();
@@ -162,16 +191,23 @@ function createWidgetWindow() {
     transparent: true,
     alwaysOnTop: true,
     resizable: false,
-    skipTaskbar: false,
+    skipTaskbar: true, // Changed to true to hide from taskbar
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
     },
   });
   widgetWindow.loadFile(path.join(__dirname, "src", "widget.html"));
 
-  // Handle widget window close event
-  widgetWindow.on("closed", () => {
-    widgetWindow = null;
+  // Handle widget window close event - but don't set to null to prevent closing
+  widgetWindow.on("close", (event) => {
+    // Prevent widget from closing when main window closes
+    // Only hide it instead, unless app is quitting
+    if (!app.isQuitting) {
+      event.preventDefault();
+      widgetWindow.hide();
+      // Disable widget in store when user closes it
+      store.set("widgetEnabled", false);
+    }
   });
 
   // Show widget if auto-show is enabled OR widget is manually enabled
@@ -198,6 +234,9 @@ function createTray() {
       click: () => {
         if (mainWindow && !mainWindow.isDestroyed()) {
           mainWindow.show();
+          mainWindow.focus();
+        } else {
+          createWindows();
         }
       },
     },
@@ -210,10 +249,26 @@ function createTray() {
       },
     },
     { type: "separator" },
-    { label: "Quit", click: () => app.quit() },
+    {
+      label: "Quit",
+      click: () => {
+        app.isQuitting = true;
+        app.quit();
+      },
+    },
   ]);
   tray.setToolTip("Data Tracker");
   tray.setContextMenu(ctx);
+
+  // Double-click tray icon to show main window
+  tray.on("double-click", () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.show();
+      mainWindow.focus();
+    } else {
+      createWindows();
+    }
+  });
 }
 
 // track previous counter to compute speeds
@@ -328,15 +383,21 @@ app.whenReady().then(async () => {
   setInterval(monitorNetwork, 1000);
 
   app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindows();
+    if (!mainWindow || mainWindow.isDestroyed()) {
+      createWindows();
+    } else {
+      mainWindow.show();
+    }
   });
 });
 
+app.on("before-quit", () => {
+  app.isQuitting = true;
+});
+
 app.on("window-all-closed", () => {
-  // keep app running in tray
-  if (process.platform !== "darwin") {
-    // don't quit; keep tray
-  }
+  // Keep app running in tray, don't quit when all windows are closed
+  // This allows the app to stay in the system tray
 });
 
 ipcMain.handle("get-daily-data", () => {
