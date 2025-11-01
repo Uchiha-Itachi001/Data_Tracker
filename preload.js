@@ -11,13 +11,15 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke("update-widget-settings", settings),
   updateWindowSize: (width, height) =>
     ipcRenderer.invoke("update-window-size", width, height),
-  // toggleAutoStart: (enabled) => ipcRenderer.invoke("toggle-auto-start", enabled), // Removed
   toggleAutoShowWidget: (enabled) =>
     ipcRenderer.invoke("toggle-auto-show-widget", enabled),
   saveWidgetEnabled: (enabled) =>
     ipcRenderer.invoke("save-widget-enabled", enabled),
-  // getAutoStart: () => ipcRenderer.invoke("get-auto-start"), // Removed
   getAutoShowWidget: () => ipcRenderer.invoke("get-auto-show-widget"),
+  // Auto-launch APIs
+  getAutoLaunch: () => ipcRenderer.invoke("get-auto-launch"),
+  toggleAutoLaunch: (enabled) =>
+    ipcRenderer.invoke("toggle-auto-launch", enabled),
   onNetworkUpdate: (cb) => {
     ipcRenderer.on("network-update", (event, payload) => cb(payload));
   },

@@ -225,7 +225,29 @@
                                         <option value="MB">MB</option>
                                         <option value="GB">GB</option>
                                     </select>
-                                </div> <!-- Auto-show Widget -->
+                                </div>
+
+                                <!-- Auto-launch on Startup -->
+                                <div class="flex items-center justify-between p-3 bg-slate-700/50 rounded-xl">
+                                    <div class="flex items-center space-x-3">
+                                        <div
+                                            class="w-10 h-10 bg-blue-900/30 rounded-lg flex items-center justify-center">
+                                            <i data-feather="power" class="w-5 h-5 text-blue-400"></i>
+                                        </div>
+                                        <div>
+                                            <p class="font-medium text-white text-sm">Launch on Startup</p>
+                                            <p class="text-xs text-slate-400">Start app when PC boots</p>
+                                        </div>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" id="auto-launch" class="sr-only peer">
+                                        <div
+                                            class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-blue-600">
+                                        </div>
+                                    </label>
+                                </div>
+
+                                <!-- Auto-show Widget -->
                                 <div class="flex items-center justify-between p-3 bg-slate-700/50 rounded-xl">
                                     <div class="flex items-center space-x-3">
                                         <div

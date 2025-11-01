@@ -12,9 +12,15 @@ const fs = require("fs");
 const si = require("systeminformation");
 const Store = require("electron-store");
 const { exec } = require("child_process");
-// const AutoLaunch = require("electron-auto-launch"); // Disabled
 
 const store = new Store({ name: "data-tracker-store" });
+
+// Auto-launch configuration for Windows
+const AutoLaunch = require("auto-launch");
+const autoLauncher = new AutoLaunch({
+  name: "DataTracker",
+  path: app.getPath("exe"),
+});
 
 // Track current network connection for uptime calculation
 let currentNetworkState = {
@@ -23,14 +29,6 @@ let currentNetworkState = {
   connectionStartTime: null,
   lastUpdateTime: Date.now(),
 };
-
-// Check if we're running the packaged app (not development)
-// const isPackaged = app.isPackaged || process.env.NODE_ENV === "production";
-
-// const autoLauncher = new AutoLaunch({
-//   name: "DataTracker",
-//   path: isPackaged ? app.getPath("exe") : null, // Only set path for packaged app
-// });
 
 // Helper function to get local date in YYYY-MM-DD format
 function getLocalDateKey() {
@@ -762,3 +760,30 @@ ipcMain.handle("toggle-auto-show-widget", async (event, enabled) => {
 ipcMain.handle("get-auto-show-widget", () =>
   store.get("autoShowWidget", false)
 );
+
+// Auto-launch IPC handlers
+ipcMain.handle("get-auto-launch", async () => {
+  try {
+    const isEnabled = await autoLauncher.isEnabled();
+    return isEnabled;
+  } catch (error) {
+    console.error("Error checking auto-launch status:", error);
+    return false;
+  }
+});
+
+ipcMain.handle("toggle-auto-launch", async (event, enabled) => {
+  try {
+    if (enabled) {
+      await autoLauncher.enable();
+      console.log("Auto-launch enabled");
+    } else {
+      await autoLauncher.disable();
+      console.log("Auto-launch disabled");
+    }
+    return true;
+  } catch (error) {
+    console.error("Error toggling auto-launch:", error);
+    return false;
+  }
+});

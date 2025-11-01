@@ -6,8 +6,8 @@ const monthUsageEl = document.getElementById("month-usage");
 const usageHistoryEl = document.getElementById("usage-history");
 const unitSelector = document.getElementById("unit-selector");
 const widgetEnable = document.getElementById("widget-enable");
-// const autoStartEnable = document.getElementById("auto-start-enable"); // Removed
 const autoShowWidget = document.getElementById("auto-show-widget");
+const autoLaunchToggle = document.getElementById("auto-launch");
 const networkInterfaceEl = document.getElementById("network-interface");
 const networkNameEl = document.getElementById("network-name");
 const signalStrengthEl = document.getElementById("signal-strength");
@@ -705,8 +705,19 @@ widgetEnable.addEventListener("change", () => {
   // Removed updateCustomizationVisibility() call since customization moved to modal
 });
 
-// Auto-start event listener removed
+// Auto-launch event listener
+autoLaunchToggle.addEventListener("change", async () => {
+  const success = await window.electronAPI.toggleAutoLaunch(
+    autoLaunchToggle.checked
+  );
+  if (!success) {
+    // Revert the toggle if it failed
+    autoLaunchToggle.checked = !autoLaunchToggle.checked;
+    alert("Failed to toggle auto-launch. Please try again.");
+  }
+});
 
+// Auto-show widget event listener
 autoShowWidget.addEventListener("change", () => {
   window.electronAPI.toggleAutoShowWidget(autoShowWidget.checked);
 });
@@ -803,7 +814,11 @@ function saveWidgetSettings() {
 
 // Load app settings
 async function loadAppSettings() {
-  // Auto-start removed completely
+  // Load auto-launch setting
+  const autoLaunchEnabled = await window.electronAPI.getAutoLaunch();
+  autoLaunchToggle.checked = autoLaunchEnabled;
+
+  // Load auto-show widget setting
   const autoShowEnabled = await window.electronAPI.getAutoShowWidget();
   autoShowWidget.checked = autoShowEnabled;
 
