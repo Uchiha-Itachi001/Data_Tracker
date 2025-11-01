@@ -1,0 +1,68 @@
+{
+  "name": "data-tracker",
+  "version": "0.1.0",
+  "description": "Cross-platform network data tracker with floating speed widget (Electron)",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win",
+    "package-win": "electron-packager . DataTracker --platform=win32 --arch=x64 --out=dist --overwrite",
+    "package-linux": "electron-packager . DataTracker --platform=linux --arch=x64 --out=dist --overwrite"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "electron-store": "^8.1.0",
+    "systeminformation": "^5.12.5"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.21",
+    "electron": "^39.0.0",
+    "electron-builder": "^26.0.12",
+    "electron-packager": "^17.1.1",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.16"
+  },
+  "build": {
+    "appId": "com.datatracker.app",
+    "productName": "DataTracker",
+    "copyright": "Copyright © 2025 DataTracker",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico",
+      "installerHeaderIcon": "assets/icon.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "DataTracker",
+      "deleteAppDataOnUninstall": false,
+      "displayLanguageSelector": false,
+      "installerLanguages": [
+        "en_US"
+      ],
+      "artifactName": "${productName} Setup ${version}.${ext}",
+      "uninstallDisplayName": "${productName} ${version}",
+      "packElevateHelper": true,
+      "warningsAsErrors": false
+    },
+    "files": [
+      "dist/",
+      "node_modules/",
+      "main.js",
+      "preload.js",
+      "src/",
+      "assets/",
+      "README.md"
+    ],
+    "compression": "maximum"
+  }
+}
