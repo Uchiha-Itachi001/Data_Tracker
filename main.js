@@ -52,7 +52,7 @@ if (!gotTheLock) {
 } else {
   app.on("second-instance", () => {
     // Someone tried to run a second instance, focus the existing window
-    if (mainWindow) {
+    if (mainWindow && !mainWindow.isDestroyed()) {
       if (mainWindow.isMinimized()) mainWindow.restore();
       mainWindow.focus();
     }
@@ -131,6 +131,11 @@ async function createWindows() {
 
   mainWindow.loadFile(path.join(__dirname, "src", "index.html"));
 
+  // Handle main window close event
+  mainWindow.on("closed", () => {
+    mainWindow = null;
+  });
+
   createWidgetWindow();
 }
 
@@ -154,6 +159,11 @@ function createWidgetWindow() {
   });
   widgetWindow.loadFile(path.join(__dirname, "src", "widget.html"));
 
+  // Handle widget window close event
+  widgetWindow.on("closed", () => {
+    widgetWindow = null;
+  });
+
   // Show widget if auto-show is enabled OR widget is manually enabled
   const autoShow = store.get("autoShowWidget", false);
   const widgetEnabled = store.get("widgetEnabled", false);
@@ -173,11 +183,20 @@ function createTray() {
     : null;
   tray = new Tray(image || nativeImage.createEmpty());
   const ctx = Menu.buildFromTemplate([
-    { label: "Show App", click: () => mainWindow.show() },
+    { 
+      label: "Show App", 
+      click: () => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.show();
+        }
+      }
+    },
     {
       label: "Toggle Widget",
       click: () => {
-        widgetWindow.isVisible() ? widgetWindow.hide() : widgetWindow.show();
+        if (widgetWindow && !widgetWindow.isDestroyed()) {
+          widgetWindow.isVisible() ? widgetWindow.hide() : widgetWindow.show();
+        }
       },
     },
     { type: "separator" },
