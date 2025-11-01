@@ -5,6 +5,7 @@ const {
   Menu,
   ipcMain,
   nativeImage,
+  shell,
 } = require("electron");
 const path = require("path");
 const fs = require("fs");
@@ -148,6 +149,20 @@ async function createWindows() {
 
   mainWindow.loadFile(path.join(__dirname, "src", "index.html"));
 
+  // Open external links in default browser instead of Electron window
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    shell.openExternal(url);
+    return { action: "deny" };
+  });
+
+  // Handle navigation to external links
+  mainWindow.webContents.on("will-navigate", (event, url) => {
+    if (url !== mainWindow.webContents.getURL()) {
+      event.preventDefault();
+      shell.openExternal(url);
+    }
+  });
+
   // Handle main window close event - hide to tray
   mainWindow.on("close", (event) => {
     if (!app.isQuitting) {
@@ -197,6 +212,19 @@ function createWidgetWindow() {
     },
   });
   widgetWindow.loadFile(path.join(__dirname, "src", "widget.html"));
+
+  // Open external links in default browser for widget too
+  widgetWindow.webContents.setWindowOpenHandler(({ url }) => {
+    shell.openExternal(url);
+    return { action: "deny" };
+  });
+
+  widgetWindow.webContents.on("will-navigate", (event, url) => {
+    if (url !== widgetWindow.webContents.getURL()) {
+      event.preventDefault();
+      shell.openExternal(url);
+    }
+  });
 
   // Handle widget window close event - but don't set to null to prevent closing
   widgetWindow.on("close", (event) => {
@@ -530,7 +558,16 @@ ipcMain.handle("get-network-info", async () => {
         const minutes = Math.floor(
           (connectionTimeMs % (1000 * 60 * 60)) / (1000 * 60)
         );
-        uptime = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+        const seconds = Math.floor((connectionTimeMs % (1000 * 60)) / 1000);
+
+        // Format uptime with hours, minutes, and seconds
+        if (hours > 0) {
+          uptime = `${hours}h ${minutes}m ${seconds}s`;
+        } else if (minutes > 0) {
+          uptime = `${minutes}m ${seconds}s`;
+        } else {
+          uptime = `${seconds}s`;
+        }
       }
 
       return {

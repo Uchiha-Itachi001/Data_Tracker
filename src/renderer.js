@@ -319,7 +319,18 @@ async function loadNetworkInfo() {
       signalStrengthEl.textContent =
         networkInfo.signalStrength || "Detecting...";
       linkSpeedEl.textContent = networkInfo.linkSpeed || "Detecting...";
-      connectionUptimeEl.textContent = networkInfo.uptime || "Detecting...";
+      connectionUptimeEl.textContent = "0s";
+
+      // Initialize connection start time and start uptime counter
+      connectionStartTime = Date.now();
+
+      // Clear existing interval if any
+      if (uptimeInterval) {
+        clearInterval(uptimeInterval);
+      }
+
+      // Start updating uptime every second
+      uptimeInterval = setInterval(updateUptimeDisplay, 1000);
     }
   } catch (error) {
     console.error("Failed to load network info:", error);
@@ -334,6 +345,45 @@ async function loadNetworkInfo() {
 
 // Network monitoring for auto-updates
 let lastNetworkState = null;
+let connectionStartTime = null;
+let uptimeInterval = null;
+
+// Function to format uptime from milliseconds
+function formatUptime(ms) {
+  const seconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+
+  const s = seconds % 60;
+  const m = minutes % 60;
+  const h = hours;
+
+  if (h > 0) {
+    return `${h}h ${m}m ${s}s`;
+  } else if (m > 0) {
+    return `${m}m ${s}s`;
+  } else {
+    return `${s}s`;
+  }
+}
+
+// Function to update uptime display every second
+function updateUptimeDisplay() {
+  if (connectionStartTime) {
+    const elapsed = Date.now() - connectionStartTime;
+    const formattedUptime = formatUptime(elapsed);
+
+    // Update main network info uptime
+    connectionUptimeEl.textContent = formattedUptime;
+
+    // Also update the Used Networks tile uptime
+    const networkTileUptime = document.querySelector("[data-network-uptime]");
+    if (networkTileUptime) {
+      networkTileUptime.textContent = formattedUptime;
+    }
+  }
+}
+
 async function monitorNetwork() {
   try {
     const networkInfo = await window.electronAPI.getNetworkInfo();
@@ -352,6 +402,17 @@ async function monitorNetwork() {
         lastNetworkState.signalStrength !== currentState.signalStrength;
 
       if (stateChanged) {
+        // Network changed - reset connection start time
+        connectionStartTime = Date.now();
+
+        // Clear existing interval if any
+        if (uptimeInterval) {
+          clearInterval(uptimeInterval);
+        }
+
+        // Start updating uptime every second
+        uptimeInterval = setInterval(updateUptimeDisplay, 1000);
+
         // Update UI with new network info
         networkInterfaceEl.textContent =
           networkInfo.interface || "Detecting...";
@@ -359,7 +420,7 @@ async function monitorNetwork() {
         signalStrengthEl.textContent =
           networkInfo.signalStrength || "Detecting...";
         linkSpeedEl.textContent = networkInfo.linkSpeed || "Detecting...";
-        connectionUptimeEl.textContent = networkInfo.uptime || "Detecting...";
+        connectionUptimeEl.textContent = "0s";
 
         lastNetworkState = currentState;
         console.log("Network info updated:", currentState);
@@ -416,17 +477,60 @@ async function loadUsedNetworks() {
     const interfaceName = (networkInfo.interface || "").toLowerCase();
     const networkName = (networkInfo.networkName || "").toLowerCase();
 
-    // Check if it's a mobile hotspot
-    if (
-      networkName.includes("phone") ||
-      networkName.includes("mobile") ||
-      networkName.includes("hotspot") ||
-      networkName.includes("iphone") ||
-      networkName.includes("android") ||
-      networkName.includes("samsung") ||
-      networkName.includes("xiaomi") ||
-      networkName.includes("oneplus")
-    ) {
+    // Debug: Log the network name to help identify patterns
+    console.log(
+      "Detecting network - Name:",
+      networkName,
+      "Interface:",
+      interfaceName
+    );
+
+    // Check if it's a mobile hotspot (more comprehensive detection)
+    const mobileKeywords = [
+      "phone",
+      "mobile",
+      "hotspot",
+      "iphone",
+      "android",
+      "samsung",
+      "xiaomi",
+      "oneplus",
+      "oppo",
+      "vivo",
+      "realme",
+      "pixel",
+      "redmi",
+      "poco",
+      "moto",
+      "nokia",
+      "huawei",
+      "honor",
+      "asus phone",
+      "rog phone",
+      "nothing phone",
+      "galaxy", // Samsung Galaxy devices
+      // Common mobile hotspot patterns
+      "'s phone",
+      "'s iphone",
+      "'s samsung",
+      "'s android",
+      "wifi direct",
+      "direct-",
+      "androidap",
+    ];
+
+    const isMobileHotspot = mobileKeywords.some((keyword) =>
+      networkName.includes(keyword.toLowerCase())
+    );
+
+    console.log(
+      "Is mobile hotspot:",
+      isMobileHotspot,
+      "- Matched keywords:",
+      mobileKeywords.filter((k) => networkName.includes(k.toLowerCase()))
+    );
+
+    if (isMobileHotspot) {
       networkIcon = "smartphone";
       iconColor = "text-purple-400";
       iconBgColor = "bg-purple-500/20";
@@ -443,20 +547,6 @@ async function loadUsedNetworks() {
       iconBgColor = "bg-green-500/20";
       networkType = "Ethernet";
     }
-    // Check if it's a router (typical router names)
-    else if (
-      networkName.includes("router") ||
-      networkName.includes("tp-link") ||
-      networkName.includes("dlink") ||
-      networkName.includes("netgear") ||
-      networkName.includes("asus") ||
-      networkName.includes("linksys")
-    ) {
-      networkIcon = "wifi";
-      iconColor = "text-cyan-400";
-      iconBgColor = "bg-cyan-500/20";
-      networkType = "Router";
-    }
     // Check if it's PC shared network
     else if (
       networkName.includes("pc") ||
@@ -469,48 +559,65 @@ async function loadUsedNetworks() {
       iconBgColor = "bg-orange-500/20";
       networkType = "PC Network";
     }
+    // Default to router/wifi for everything else (typical router names or any wifi network)
+    else {
+      networkIcon = "wifi";
+      iconColor = "text-cyan-400";
+      iconBgColor = "bg-cyan-500/20";
+      networkType = "Router";
+    }
 
-    // Calculate uptime in a readable format
-    const uptimeText = networkInfo.uptime || "N/A";
+    // Calculate uptime in a readable format (will be updated dynamically)
+    const uptimeText = "0s";
 
     // Create network list tile
     const networkTile = document.createElement("div");
     networkTile.className =
       "p-4 rounded-xl bg-slate-700/50 border border-slate-600/50 hover:bg-slate-600/50 hover:border-slate-500/60 transition-all duration-300 cursor-pointer";
+    networkTile.setAttribute("data-network-tile", "true");
 
     networkTile.innerHTML = `
-      <div class="flex items-center gap-3">
-        <!-- Icon -->
-        <div class="flex-shrink-0">
-          <div class="p-3 ${iconBgColor} rounded-lg">
-            <i data-feather="${networkIcon}" class="w-6 h-6 ${iconColor}"></i>
+      <div class="flex items-start gap-3">
+        <!-- Icon with animated green dot -->
+        <div class="flex-shrink-0 relative">
+          <div class="p-2 ${iconBgColor} rounded-lg">
+            <i data-feather="${networkIcon}" class="w-5 h-5 ${iconColor}"></i>
+          </div>
+          <!-- Animated green dot for connected status -->
+          <div class="absolute -top-1 -right-1 flex h-3 w-3">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
           </div>
         </div>
         
         <!-- Content -->
         <div class="flex-1 min-w-0">
-          <div class="flex items-center justify-between mb-1">
-            <h4 class="text-white font-semibold text-sm truncate">${
-              networkInfo.networkName
-            }</h4>
-            <span class="text-green-400 text-xs font-medium ml-2">● Connected</span>
-          </div>
-          
-          <div class="text-slate-400 text-xs mb-2">
-            ${networkType} • ${networkInfo.interface || "N/A"}
-          </div>
-          
-          <div class="flex items-center justify-between gap-4 text-xs">
-            <div class="flex items-center gap-1">
-              <i data-feather="database" class="w-3 h-3 text-slate-400"></i>
-              <span class="text-slate-300 font-medium">${bytesToHuman(
-                todayData.rx_tx_bytes,
-                unitSelector.value
-              )}</span>
+          <!-- Row 1: Network Name and Type/Interface -->
+          <div class="flex items-start justify-between mb-2">
+            <div class="flex-1 min-w-0 mr-3">
+              <h4 class="text-white font-semibold text-sm truncate mb-1">${
+                networkInfo.networkName
+              }</h4>
+              <div class="text-slate-400 text-xs">
+                ${networkType} • ${networkInfo.interface || "N/A"}
+              </div>
             </div>
-            <div class="flex items-center gap-1">
-              <i data-feather="clock" class="w-3 h-3 text-slate-400"></i>
-              <span class="text-slate-300 font-medium">${uptimeText}</span>
+            
+            <!-- Data Usage and Uptime stacked on right -->
+            <div class="flex flex-col items-end gap-1 flex-shrink-0">
+              <!-- Data Usage -->
+              <div class="flex items-center gap-1">
+                <i data-feather="arrow-down-circle" class="w-4 h-4 text-green-400"></i>
+                <span class="text-green-400 font-medium text-sm" data-network-usage>${bytesToHuman(
+                  todayData.rx_tx_bytes,
+                  unitSelector.value
+                )}</span>
+              </div>
+              <!-- Uptime below Data Usage -->
+              <div class="flex items-center gap-1 text-xs">
+                <i data-feather="clock" class="w-3 h-3 text-slate-400"></i>
+                <span class="text-slate-300 font-medium" data-network-uptime>${uptimeText}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -547,8 +654,38 @@ async function loadUsedNetworks() {
   }
 }
 
-// Update used networks every 10 seconds
-setInterval(loadUsedNetworks, 10000);
+// Function to update network data usage and uptime without reloading the entire list
+async function updateUsedNetworkData() {
+  try {
+    const networkTile = document.querySelector("[data-network-tile]");
+    if (!networkTile) return; // No network tile to update
+
+    // Get today's usage data
+    const data = await window.electronAPI.getDailyData();
+    const today = getLocalDateKey();
+    const todayData = data[today] || {
+      rx_tx_bytes: 0,
+      rx_bytes: 0,
+      tx_bytes: 0,
+    };
+
+    // Update data usage
+    const usageElement = networkTile.querySelector("[data-network-usage]");
+    if (usageElement) {
+      usageElement.textContent = bytesToHuman(
+        todayData.rx_tx_bytes,
+        unitSelector.value
+      );
+    }
+
+    // Uptime is already being updated by the separate uptime interval
+  } catch (error) {
+    console.error("Failed to update network data:", error);
+  }
+}
+
+// Update used network data every 5 seconds (only data usage, not the whole UI)
+setInterval(updateUsedNetworkData, 5000);
 
 unitSelector.addEventListener("change", () => {
   // This will be handled in the refreshUI function
