@@ -59,6 +59,10 @@ if (!gotTheLock) {
   });
 }
 
+// Disable disk cache to prevent "Access is denied" errors
+app.commandLine.appendSwitch('disable-http-cache');
+app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
+
 const DATA_FILE_DIR = path.join(app.getPath("userData"), "data");
 const DATA_FILE = path.join(DATA_FILE_DIR, "daily.json");
 
@@ -126,8 +130,14 @@ async function createWindows() {
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
+      nodeIntegration: false,
+      contextIsolation: true,
+      enableRemoteModule: false,
     },
   });
+
+  // Clear cache to prevent access errors
+  await mainWindow.webContents.session.clearCache();
 
   mainWindow.loadFile(path.join(__dirname, "src", "index.html"));
 
@@ -183,13 +193,13 @@ function createTray() {
     : null;
   tray = new Tray(image || nativeImage.createEmpty());
   const ctx = Menu.buildFromTemplate([
-    { 
-      label: "Show App", 
+    {
+      label: "Show App",
       click: () => {
         if (mainWindow && !mainWindow.isDestroyed()) {
           mainWindow.show();
         }
-      }
+      },
     },
     {
       label: "Toggle Widget",
