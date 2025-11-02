@@ -1,5 +1,7 @@
 # 📊 Data Tracker
 
+**Author**: Pankoj Roy
+
 <div align="center">
 
 ![Data Tracker Banner](https://img.shields.io/badge/Electron-App-47848F?style=for-the-badge&logo=electron&logoColor=white)

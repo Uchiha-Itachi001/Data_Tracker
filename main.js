@@ -142,6 +142,9 @@ async function createWindows() {
     },
   });
 
+  // Remove menu bar completely to prevent access to dev tools
+  mainWindow.setMenu(null);
+
   // Clear cache to prevent access errors
   await mainWindow.webContents.session.clearCache();
 
@@ -205,10 +208,22 @@ function createWidgetWindow() {
     alwaysOnTop: true,
     resizable: false,
     skipTaskbar: true, // Changed to true to hide from taskbar
+    type: "toolbar", // Special window type that stays above most windows
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
     },
   });
+
+  // Remove menu bar from widget too
+  widgetWindow.setMenu(null);
+
+  // Set the window to always be on top with screen-saver level
+  // This ensures it stays above fullscreen windows
+  widgetWindow.setAlwaysOnTop(true, "screen-saver");
+
+  // Make it visible on all workspaces (Windows virtual desktops)
+  widgetWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+
   widgetWindow.loadFile(path.join(__dirname, "src", "widget.html"));
 
   // Open external links in default browser for widget too
@@ -235,6 +250,26 @@ function createWidgetWindow() {
       store.set("widgetEnabled", false);
     }
   });
+
+  // Re-assert always on top when window loses focus
+  widgetWindow.on("blur", () => {
+    if (widgetWindow && !widgetWindow.isDestroyed()) {
+      widgetWindow.setAlwaysOnTop(true, "screen-saver");
+    }
+  });
+
+  // Ensure widget stays on top periodically (every 2 seconds)
+  // This helps maintain top position even when fullscreen apps are launched
+  setInterval(() => {
+    if (
+      widgetWindow &&
+      !widgetWindow.isDestroyed() &&
+      widgetWindow.isVisible()
+    ) {
+      widgetWindow.setAlwaysOnTop(true, "screen-saver");
+      widgetWindow.moveTop();
+    }
+  }, 2000);
 
   // Show widget if auto-show is enabled OR widget is manually enabled
   const autoShow = store.get("autoShowWidget", false);
@@ -270,7 +305,13 @@ function createTray() {
       label: "Toggle Widget",
       click: () => {
         if (widgetWindow && !widgetWindow.isDestroyed()) {
-          widgetWindow.isVisible() ? widgetWindow.hide() : widgetWindow.show();
+          if (widgetWindow.isVisible()) {
+            widgetWindow.hide();
+          } else {
+            widgetWindow.setAlwaysOnTop(true, "screen-saver");
+            widgetWindow.moveTop();
+            widgetWindow.show();
+          }
         }
       },
     },
@@ -785,6 +826,8 @@ ipcMain.handle("toggle-widget", (event, enabled) => {
     if (!widgetWindow || widgetWindow.isDestroyed()) {
       createWidgetWindow();
     } else {
+      widgetWindow.setAlwaysOnTop(true, "screen-saver");
+      widgetWindow.moveTop();
       widgetWindow.show();
     }
   } else {
@@ -796,6 +839,15 @@ ipcMain.handle("toggle-widget", (event, enabled) => {
 
 ipcMain.handle("save-widget-enabled", (event, enabled) => {
   store.set("widgetEnabled", enabled);
+});
+
+ipcMain.handle("open-main-app", () => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.show();
+    mainWindow.focus();
+  } else {
+    createWindows();
+  }
 });
 
 ipcMain.handle("reset-data", () => {

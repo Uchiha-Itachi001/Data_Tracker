@@ -114,3 +114,13 @@ desktop.ini
 # Data storage (optional - uncomment if you don't want to commit user data)
 # data/
 # *.json
+
+# Mobile development (not used for PC app)
+android/
+ios/
+capacitor.config.ts
+capacitor.config.json
+
+# Build artifacts
+*.map
+src/input.css

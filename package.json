@@ -9,7 +9,7 @@
     "package-win": "electron-packager . DataTracker --platform=win32 --arch=x64 --out=dist --overwrite",
     "package-linux": "electron-packager . DataTracker --platform=linux --arch=x64 --out=dist --overwrite"
   },
-  "author": "",
+  "author": "Uchiha-Itachi001",
   "license": "MIT",
   "dependencies": {
     "auto-launch": "^5.0.6",
@@ -32,7 +32,14 @@
       "output": "dist"
     },
     "win": {
-      "target": "nsis",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
       "icon": "assets/icon.ico"
     },
     "nsis": {
@@ -50,20 +57,29 @@
       "installerLanguages": [
         "en_US"
       ],
-      "artifactName": "${productName} Setup ${version}.${ext}",
+      "artifactName": "${productName}-Setup-${version}.${ext}",
       "uninstallDisplayName": "${productName} ${version}",
       "packElevateHelper": true,
       "warningsAsErrors": false
     },
     "files": [
-      "dist/",
-      "node_modules/",
       "main.js",
       "preload.js",
-      "src/",
-      "assets/",
-      "README.md"
+      "src/**/*",
+      "assets/*.png",
+      "assets/*.ico",
+      "!src/input.css",
+      "!**/*.map",
+      "!android/**",
+      "!capacitor.config.ts"
     ],
-    "compression": "maximum"
+    "asarUnpack": [
+      "node_modules/systeminformation/**/*"
+    ],
+    "compression": "maximum",
+    "asar": true,
+    "removePackageScripts": true,
+    "npmRebuild": false,
+    "buildDependenciesFromSource": false
   }
 }

@@ -16,6 +16,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   saveWidgetEnabled: (enabled) =>
     ipcRenderer.invoke("save-widget-enabled", enabled),
   getAutoShowWidget: () => ipcRenderer.invoke("get-auto-show-widget"),
+  openMainApp: () => ipcRenderer.invoke("open-main-app"),
   // Auto-launch APIs
   getAutoLaunch: () => ipcRenderer.invoke("get-auto-launch"),
   toggleAutoLaunch: (enabled) =>
