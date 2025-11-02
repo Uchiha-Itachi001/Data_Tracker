@@ -4,9 +4,9 @@
   "description": "Cross-platform network data tracker with floating speed widget (Electron)",
   "main": "main.js",
   "scripts": {
-    "start": "electron .",
+    "start": "npm run build:css && electron .",
     "build": "electron-builder --win",
-    "build:css": "npx tailwindcss -i ./src/input.css -o ./src/output.css --minify",
+    "build:css": "npx tailwindcss -i ./src/input.css -o ./src/output.css",
     "watch:css": "npx tailwindcss -i ./src/input.css -o ./src/output.css --watch",
     "package-win": "electron-packager . DataTracker --platform=win32 --arch=x64 --out=dist --overwrite",
     "package-linux": "electron-packager . DataTracker --platform=linux --arch=x64 --out=dist --overwrite"
