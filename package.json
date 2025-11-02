@@ -4,7 +4,7 @@
   "description": "Cross-platform network data tracker with floating speed widget (Electron)",
   "main": "main.js",
   "scripts": {
-    "start": "npm run build:css && electron .",
+    "start": "electron .",
     "build": "electron-builder --win",
     "build:css": "npx tailwindcss -i ./src/input.css -o ./src/output.css --minify",
     "watch:css": "npx tailwindcss -i ./src/input.css -o ./src/output.css --watch",

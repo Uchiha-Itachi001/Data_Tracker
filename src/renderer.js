@@ -337,7 +337,7 @@ async function loadNetworkInfo() {
       signalStrengthEl.textContent = "N/A";
       linkSpeedEl.textContent = "N/A";
       connectionUptimeEl.textContent = "N/A";
-      
+
       // Clear uptime interval
       if (uptimeInterval) {
         clearInterval(uptimeInterval);
@@ -445,7 +445,7 @@ async function monitorNetwork() {
         signalStrengthEl.textContent = "N/A";
         linkSpeedEl.textContent = "N/A";
         connectionUptimeEl.textContent = "N/A";
-        
+
         // Clear uptime interval
         if (uptimeInterval) {
           clearInterval(uptimeInterval);
