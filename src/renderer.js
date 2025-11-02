@@ -313,12 +313,11 @@ async function refreshUI() {
 async function loadNetworkInfo() {
   try {
     const networkInfo = await window.electronAPI.getNetworkInfo();
-    if (networkInfo) {
-      networkInterfaceEl.textContent = networkInfo.interface || "Detecting...";
-      networkNameEl.textContent = networkInfo.networkName || "Detecting...";
-      signalStrengthEl.textContent =
-        networkInfo.signalStrength || "Detecting...";
-      linkSpeedEl.textContent = networkInfo.linkSpeed || "Detecting...";
+    if (networkInfo && networkInfo.networkName !== "N/A") {
+      networkInterfaceEl.textContent = networkInfo.interface || "N/A";
+      networkNameEl.textContent = networkInfo.networkName || "N/A";
+      signalStrengthEl.textContent = networkInfo.signalStrength || "N/A";
+      linkSpeedEl.textContent = networkInfo.linkSpeed || "N/A";
       connectionUptimeEl.textContent = "0s";
 
       // Initialize connection start time and start uptime counter
@@ -331,15 +330,29 @@ async function loadNetworkInfo() {
 
       // Start updating uptime every second
       uptimeInterval = setInterval(updateUptimeDisplay, 1000);
+    } else {
+      // No network connected - show disconnected state
+      networkInterfaceEl.textContent = "No Connection";
+      networkNameEl.textContent = "Not Connected";
+      signalStrengthEl.textContent = "N/A";
+      linkSpeedEl.textContent = "N/A";
+      connectionUptimeEl.textContent = "N/A";
+      
+      // Clear uptime interval
+      if (uptimeInterval) {
+        clearInterval(uptimeInterval);
+        uptimeInterval = null;
+      }
+      connectionStartTime = null;
     }
   } catch (error) {
     console.error("Failed to load network info:", error);
-    // Set loading state on error
-    networkInterfaceEl.textContent = "Detecting...";
-    networkNameEl.textContent = "Detecting...";
-    signalStrengthEl.textContent = "Detecting...";
-    linkSpeedEl.textContent = "Detecting...";
-    connectionUptimeEl.textContent = "Detecting...";
+    // Set disconnected state on error
+    networkInterfaceEl.textContent = "No Connection";
+    networkNameEl.textContent = "Not Connected";
+    signalStrengthEl.textContent = "N/A";
+    linkSpeedEl.textContent = "N/A";
+    connectionUptimeEl.textContent = "N/A";
   }
 }
 
@@ -387,7 +400,7 @@ function updateUptimeDisplay() {
 async function monitorNetwork() {
   try {
     const networkInfo = await window.electronAPI.getNetworkInfo();
-    if (networkInfo) {
+    if (networkInfo && networkInfo.networkName !== "N/A") {
       // Check if network state has changed
       const currentState = {
         interface: networkInfo.interface,
@@ -414,16 +427,33 @@ async function monitorNetwork() {
         uptimeInterval = setInterval(updateUptimeDisplay, 1000);
 
         // Update UI with new network info
-        networkInterfaceEl.textContent =
-          networkInfo.interface || "Detecting...";
-        networkNameEl.textContent = networkInfo.networkName || "Detecting...";
-        signalStrengthEl.textContent =
-          networkInfo.signalStrength || "Detecting...";
-        linkSpeedEl.textContent = networkInfo.linkSpeed || "Detecting...";
+        networkInterfaceEl.textContent = networkInfo.interface || "N/A";
+        networkNameEl.textContent = networkInfo.networkName || "N/A";
+        signalStrengthEl.textContent = networkInfo.signalStrength || "N/A";
+        linkSpeedEl.textContent = networkInfo.linkSpeed || "N/A";
         connectionUptimeEl.textContent = "0s";
 
         lastNetworkState = currentState;
         console.log("Network info updated:", currentState);
+      }
+    } else {
+      // No network connected
+      if (lastNetworkState) {
+        // Network was connected before, now disconnected
+        networkInterfaceEl.textContent = "No Connection";
+        networkNameEl.textContent = "Not Connected";
+        signalStrengthEl.textContent = "N/A";
+        linkSpeedEl.textContent = "N/A";
+        connectionUptimeEl.textContent = "N/A";
+        
+        // Clear uptime interval
+        if (uptimeInterval) {
+          clearInterval(uptimeInterval);
+          uptimeInterval = null;
+        }
+        connectionStartTime = null;
+        lastNetworkState = null;
+        console.log("Network disconnected");
       }
     }
   } catch (error) {

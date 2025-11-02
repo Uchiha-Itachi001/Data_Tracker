@@ -4,8 +4,10 @@
   "description": "Cross-platform network data tracker with floating speed widget (Electron)",
   "main": "main.js",
   "scripts": {
-    "start": "electron .",
+    "start": "npm run build:css && electron .",
     "build": "electron-builder --win",
+    "build:css": "npx tailwindcss -i ./src/input.css -o ./src/output.css --minify",
+    "watch:css": "npx tailwindcss -i ./src/input.css -o ./src/output.css --watch",
     "package-win": "electron-packager . DataTracker --platform=win32 --arch=x64 --out=dist --overwrite",
     "package-linux": "electron-packager . DataTracker --platform=linux --arch=x64 --out=dist --overwrite"
   },
@@ -14,6 +16,7 @@
   "dependencies": {
     "auto-launch": "^5.0.6",
     "electron-store": "^8.1.0",
+    "feather-icons": "^4.29.2",
     "systeminformation": "^5.12.5"
   },
   "devDependencies": {
@@ -22,7 +25,7 @@
     "electron-builder": "^26.0.12",
     "electron-packager": "^17.1.1",
     "postcss": "^8.5.6",
-    "tailwindcss": "^4.1.16"
+    "tailwindcss": "^3.4.17"
   },
   "build": {
     "appId": "com.datatracker.app",
