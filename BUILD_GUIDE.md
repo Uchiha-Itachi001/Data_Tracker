@@ -407,7 +407,7 @@ Before building for distribution:
 
 ## License & Copyright
 
-**Copyright © 2025 Uchiha-Itachi001**
+**Copyright © 2025 Pankoj Roy**
 
 All rights reserved.
 
