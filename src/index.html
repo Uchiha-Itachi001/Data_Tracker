@@ -6,12 +6,55 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Data Tracker</title>
-    <link rel="stylesheet" href="output.css">
-    <script src="feather.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/feather-icons"></script>
     <link rel="stylesheet" href="styles.css">
 </head>
 
 <body>
+
+    <!-- No Network Screen (Pure CSS) -->
+    <div id="no-network-screen" class="no-network-screen">
+        <div class="no-network-container">
+            <!-- Left Column -->
+            <div class="no-network-left">
+                <div class="no-network-icon">
+                    <div class="no-network-icon-inner">📡</div>
+                </div>
+                <h1 class="no-network-title">No Network Connection</h1>
+                <p class="no-network-message">
+                    Unable to detect any active network connection. Please check your connection and try again.
+                </p>
+
+                <div class="no-network-tips">
+                    <div class="no-network-tips-title">Quick Tips:</div>
+                    <ul class="no-network-tips-list">
+                        <li>Check if your WiFi or Ethernet is connected</li>
+                        <li>Restart your router or modem</li>
+                        <li>Verify network adapter is enabled</li>
+                        <li>Try connecting to a different network</li>
+                    </ul>
+                </div>
+
+                <div class="no-network-spinner"></div>
+                <div class="no-network-status">Checking for connection...</div>
+            </div>
+
+            <!-- Right Column - Usage History -->
+            <div class="no-network-right">
+                <div class="no-network-history">
+                    <div class="no-network-history-header">
+                        <span class="no-network-history-icon">📊</span>
+                        <h3 class="no-network-history-title">Usage History</h3>
+                    </div>
+                    <div id="no-network-usage-list" class="no-network-usage-list">
+                        <!-- Usage history items will be populated by JavaScript -->
+                        <div class="no-network-loading">Loading history...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <main class="bg-gradient-to-br from-slate-900 to-slate-800 min-h-screen font-sans">
         <div class="min-h-screen flex flex-col">

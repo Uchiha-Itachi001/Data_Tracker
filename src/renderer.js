@@ -13,6 +13,7 @@ const networkNameEl = document.getElementById("network-name");
 const signalStrengthEl = document.getElementById("signal-strength");
 const linkSpeedEl = document.getElementById("link-speed");
 const connectionUptimeEl = document.getElementById("connection-uptime");
+const noNetworkScreen = document.getElementById("no-network-screen");
 
 // Used networks elements
 const networkListEl = document.getElementById("network-list");
@@ -25,8 +26,8 @@ const gridViewBtn = document.getElementById("grid-view-btn");
 let currentView = "grid"; // "grid" or "list"
 
 // Helper function to get local date in YYYY-MM-DD format (for storage)
-function getLocalDateKey() {
-  const now = new Date();
+function getLocalDateKey(date) {
+  const now = date || new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, "0");
   const day = String(now.getDate()).padStart(2, "0");
@@ -310,14 +311,117 @@ async function refreshUI() {
   }
 }
 
+// Function to populate usage history in no-network screen
+async function loadNoNetworkHistory() {
+  const noNetworkUsageList = document.getElementById("no-network-usage-list");
+
+  try {
+    const data = await window.electronAPI.getDailyData();
+    const selectedUnit = unitSelector.value;
+
+    // Convert data object to array and sort by date (newest first)
+    const sortedDates = Object.keys(data).sort(
+      (a, b) => new Date(b) - new Date(a)
+    );
+
+    if (sortedDates.length === 0) {
+      noNetworkUsageList.innerHTML = `
+        <div class="no-network-no-data">
+          <div class="no-network-no-data-icon">📊</div>
+          <div class="no-network-no-data-text">No usage history available yet.<br>Start using the network to see your data usage.</div>
+        </div>
+      `;
+      return;
+    }
+
+    // Clear loading message
+    noNetworkUsageList.innerHTML = "";
+
+    // Show last 10 days of history
+    const recentDates = sortedDates.slice(0, 10);
+
+    recentDates.forEach((dateKey) => {
+      const dayData = data[dateKey];
+      const totalUsage = dayData.rx_tx_bytes || 0;
+      const rxBytes = dayData.rx_bytes || 0;
+      const txBytes = dayData.tx_bytes || 0;
+
+      // Format date
+      const date = new Date(dateKey);
+      const today = new Date();
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+
+      let displayDate;
+      if (dateKey === getLocalDateKey()) {
+        displayDate = "Today";
+      } else if (dateKey === getLocalDateKey(yesterday)) {
+        displayDate = "Yesterday";
+      } else {
+        const options = { month: "short", day: "numeric", year: "numeric" };
+        displayDate = date.toLocaleDateString("en-US", options);
+      }
+
+      // Create usage item
+      const usageItem = document.createElement("div");
+      usageItem.className = "no-network-usage-item";
+      usageItem.innerHTML = `
+        <div class="no-network-usage-date">
+          <span class="no-network-usage-day">${displayDate}</span>
+          <span class="no-network-usage-amount">${bytesToHuman(
+            totalUsage,
+            selectedUnit
+          )}</span>
+        </div>
+        <div class="no-network-usage-details">
+          <span class="no-network-usage-rx">
+            <span class="no-network-usage-arrow">↓</span>
+            <span>Downloaded: ${bytesToHuman(rxBytes, selectedUnit)}</span>
+          </span>
+          <span class="no-network-usage-tx">
+            <span class="no-network-usage-arrow">↑</span>
+            <span>Uploaded: ${bytesToHuman(txBytes, selectedUnit)}</span>
+          </span>
+        </div>
+      `;
+
+      noNetworkUsageList.appendChild(usageItem);
+    });
+  } catch (error) {
+    console.error("Failed to load no-network history:", error);
+    noNetworkUsageList.innerHTML = `
+      <div class="no-network-loading">Failed to load usage history</div>
+    `;
+  }
+}
+
 async function loadNetworkInfo() {
   try {
     const networkInfo = await window.electronAPI.getNetworkInfo();
-    if (networkInfo && networkInfo.networkName !== "N/A") {
-      networkInterfaceEl.textContent = networkInfo.interface || "N/A";
-      networkNameEl.textContent = networkInfo.networkName || "N/A";
-      signalStrengthEl.textContent = networkInfo.signalStrength || "N/A";
-      linkSpeedEl.textContent = networkInfo.linkSpeed || "N/A";
+
+    // Check if network is connected
+    if (
+      !networkInfo ||
+      networkInfo.networkName === "N/A" ||
+      !networkInfo.interface ||
+      networkInfo.interface === "N/A"
+    ) {
+      // Show no-network screen
+      noNetworkScreen.classList.add("active");
+      // Load usage history for no-network screen
+      await loadNoNetworkHistory();
+      return;
+    } else {
+      // Hide no-network screen
+      noNetworkScreen.classList.remove("active");
+    }
+
+    if (networkInfo) {
+      networkInterfaceEl.textContent = networkInfo.interface || "Detecting...";
+      networkNameEl.textContent = networkInfo.networkName || "Detecting...";
+      signalStrengthEl.textContent =
+        networkInfo.signalStrength || "Detecting...";
+      linkSpeedEl.textContent = networkInfo.linkSpeed || "Detecting...";
       connectionUptimeEl.textContent = "0s";
 
       // Initialize connection start time and start uptime counter
@@ -330,29 +434,17 @@ async function loadNetworkInfo() {
 
       // Start updating uptime every second
       uptimeInterval = setInterval(updateUptimeDisplay, 1000);
-    } else {
-      // No network connected - show disconnected state
-      networkInterfaceEl.textContent = "No Connection";
-      networkNameEl.textContent = "Not Connected";
-      signalStrengthEl.textContent = "N/A";
-      linkSpeedEl.textContent = "N/A";
-      connectionUptimeEl.textContent = "N/A";
-
-      // Clear uptime interval
-      if (uptimeInterval) {
-        clearInterval(uptimeInterval);
-        uptimeInterval = null;
-      }
-      connectionStartTime = null;
     }
   } catch (error) {
     console.error("Failed to load network info:", error);
-    // Set disconnected state on error
-    networkInterfaceEl.textContent = "No Connection";
-    networkNameEl.textContent = "Not Connected";
-    signalStrengthEl.textContent = "N/A";
-    linkSpeedEl.textContent = "N/A";
-    connectionUptimeEl.textContent = "N/A";
+    // Show no-network screen on error
+    noNetworkScreen.classList.add("active");
+    // Set loading state on error
+    networkInterfaceEl.textContent = "Detecting...";
+    networkNameEl.textContent = "Detecting...";
+    signalStrengthEl.textContent = "Detecting...";
+    linkSpeedEl.textContent = "Detecting...";
+    connectionUptimeEl.textContent = "Detecting...";
   }
 }
 
@@ -360,6 +452,7 @@ async function loadNetworkInfo() {
 let lastNetworkState = null;
 let connectionStartTime = null;
 let uptimeInterval = null;
+let wasOffline = false; // Track if we were previously offline
 
 // Function to format uptime from milliseconds
 function formatUptime(ms) {
@@ -388,19 +481,50 @@ function updateUptimeDisplay() {
 
     // Update main network info uptime
     connectionUptimeEl.textContent = formattedUptime;
-
-    // Also update the Used Networks tile uptime
-    const networkTileUptime = document.querySelector("[data-network-uptime]");
-    if (networkTileUptime) {
-      networkTileUptime.textContent = formattedUptime;
-    }
   }
 }
 
 async function monitorNetwork() {
   try {
     const networkInfo = await window.electronAPI.getNetworkInfo();
-    if (networkInfo && networkInfo.networkName !== "N/A") {
+
+    // Check if network is disconnected
+    if (
+      !networkInfo ||
+      networkInfo.networkName === "N/A" ||
+      !networkInfo.interface ||
+      networkInfo.interface === "N/A"
+    ) {
+      // Show no-network screen
+      noNetworkScreen.classList.add("active");
+      // Load usage history for no-network screen
+      await loadNoNetworkHistory();
+
+      // Clear uptime interval
+      if (uptimeInterval) {
+        clearInterval(uptimeInterval);
+        uptimeInterval = null;
+      }
+      connectionStartTime = null;
+      lastNetworkState = null;
+      wasOffline = true; // Mark that we're offline
+      return;
+    } else {
+      // Hide no-network screen
+      noNetworkScreen.classList.remove("active");
+
+      // If we were offline and now online, refresh the app once
+      if (wasOffline) {
+        console.log("Network restored - refreshing app...");
+        wasOffline = false;
+        setTimeout(() => {
+          location.reload();
+        }, 500); // Small delay to ensure smooth transition
+        return;
+      }
+    }
+
+    if (networkInfo) {
       // Check if network state has changed
       const currentState = {
         interface: networkInfo.interface,
@@ -427,33 +551,16 @@ async function monitorNetwork() {
         uptimeInterval = setInterval(updateUptimeDisplay, 1000);
 
         // Update UI with new network info
-        networkInterfaceEl.textContent = networkInfo.interface || "N/A";
-        networkNameEl.textContent = networkInfo.networkName || "N/A";
-        signalStrengthEl.textContent = networkInfo.signalStrength || "N/A";
-        linkSpeedEl.textContent = networkInfo.linkSpeed || "N/A";
+        networkInterfaceEl.textContent =
+          networkInfo.interface || "Detecting...";
+        networkNameEl.textContent = networkInfo.networkName || "Detecting...";
+        signalStrengthEl.textContent =
+          networkInfo.signalStrength || "Detecting...";
+        linkSpeedEl.textContent = networkInfo.linkSpeed || "Detecting...";
         connectionUptimeEl.textContent = "0s";
 
         lastNetworkState = currentState;
         console.log("Network info updated:", currentState);
-      }
-    } else {
-      // No network connected
-      if (lastNetworkState) {
-        // Network was connected before, now disconnected
-        networkInterfaceEl.textContent = "No Connection";
-        networkNameEl.textContent = "Not Connected";
-        signalStrengthEl.textContent = "N/A";
-        linkSpeedEl.textContent = "N/A";
-        connectionUptimeEl.textContent = "N/A";
-
-        // Clear uptime interval
-        if (uptimeInterval) {
-          clearInterval(uptimeInterval);
-          uptimeInterval = null;
-        }
-        connectionStartTime = null;
-        lastNetworkState = null;
-        console.log("Network disconnected");
       }
     }
   } catch (error) {
@@ -597,9 +704,6 @@ async function loadUsedNetworks() {
       networkType = "Router";
     }
 
-    // Calculate uptime in a readable format (will be updated dynamically)
-    const uptimeText = "0s";
-
     // Create network list tile
     const networkTile = document.createElement("div");
     networkTile.className =
@@ -642,11 +746,6 @@ async function loadUsedNetworks() {
                   todayData.rx_tx_bytes,
                   unitSelector.value
                 )}</span>
-              </div>
-              <!-- Uptime below Data Usage -->
-              <div class="flex items-center gap-1 text-xs">
-                <i data-feather="clock" class="w-3 h-3 text-slate-400"></i>
-                <span class="text-slate-300 font-medium" data-network-uptime>${uptimeText}</span>
               </div>
             </div>
           </div>
