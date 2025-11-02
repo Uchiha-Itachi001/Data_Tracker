@@ -4,6 +4,8 @@
 
 This comprehensive guide covers every feature implemented in the Data Tracker application with detailed explanations, code examples, and usage instructions.
 
+📖 [← Back to README](README.md) • 🔨 [Build Guide](BUILD_GUIDE.md)
+
 ---
 
 ## 📋 Table of Contents
@@ -1597,6 +1599,13 @@ All rights reserved.
 ## Support
 
 For issues, feature requests, or contributions, please visit the [GitHub repository](https://github.com/Uchiha-Itachi001/Data_Tracker).
+
+---
+
+## 📚 Related Documentation
+
+- **[📖 README](README.md)** - Project overview, features, and quick start guide
+- **[🔨 Build Guide](BUILD_GUIDE.md)** - Comprehensive guide for building, developing, and distributing the application
 
 ---
 

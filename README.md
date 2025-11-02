@@ -11,7 +11,7 @@
 
 **A beautiful, modern Electron desktop application for real-time network monitoring and data usage tracking**
 
-[Features](#-features) • [Installation](#-installation) • [Usage](#-usage) • [Tech Stack](#-tech-stack)
+[Features](#-features) • [Installation](#-installation) • [Usage](#-usage) • [Tech Stack](#-tech-stack) • [📖 Build Guide](BUILD_GUIDE.md) • [🎯 Features Guide](FEATURES_GUIDE.md)
 
 </div>
 
@@ -227,6 +227,15 @@ This project is open source and available under the [MIT License](LICENSE).
 If you found this project helpful, please give it a ⭐️!
 
 For issues, questions, or suggestions, please [open an issue](https://github.com/Uchiha-Itachi001/Data_Tracker/issues).
+
+---
+
+## 📚 Additional Documentation
+
+For more detailed information about this project:
+
+- **[🔨 Build Guide](BUILD_GUIDE.md)** - Comprehensive guide for building, developing, and distributing the application
+- **[🎯 Features Guide](FEATURES_GUIDE.md)** - Detailed documentation of all features with code examples and implementation details
 
 ---
 

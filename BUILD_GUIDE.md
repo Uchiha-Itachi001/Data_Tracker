@@ -4,6 +4,8 @@
 
 This comprehensive guide covers everything you need to know about building, developing, and distributing the Data Tracker application.
 
+📖 [← Back to README](README.md) • 🎯 [Features Guide](FEATURES_GUIDE.md)
+
 ---
 
 ## 📋 Table of Contents
@@ -433,6 +435,13 @@ All rights reserved.
 - ✅ System tray integration
 - ✅ Auto-launch support
 - ✅ Menu bar removed for security
+
+---
+
+## 📚 Related Documentation
+
+- **[📖 README](README.md)** - Project overview, features, and quick start guide
+- **[🎯 Features Guide](FEATURES_GUIDE.md)** - Detailed documentation of all features with code examples
 
 ---
 
