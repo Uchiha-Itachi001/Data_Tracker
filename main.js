@@ -347,7 +347,51 @@ async function monitorNetwork() {
       tx_bytes: 0,
       last_rx: totalRx,
       last_tx: totalTx,
+      networks: {}, // Store network-specific data
     };
+
+    // Get current network info for tracking
+    let currentNetworkName = null;
+    let currentInterface = "N/A";
+    try {
+      const interfaces = await si.networkInterfaces();
+      const defaultInterface =
+        interfaces.find((iface) => iface.default) || interfaces[0];
+      if (defaultInterface) {
+        currentInterface = defaultInterface.iface || "N/A";
+
+        // Try to get WiFi network name
+        try {
+          const wifiConnections = await si.wifiConnections();
+          const activeWifi = wifiConnections.find(
+            (conn) => conn.iface === defaultInterface.iface && conn.ssid
+          );
+          if (activeWifi && activeWifi.ssid) {
+            currentNetworkName = activeWifi.ssid;
+          }
+        } catch (wifiErr) {
+          console.log("WiFi info not available:", wifiErr.message);
+        }
+      }
+    } catch (err) {
+      console.warn("Could not get current network info:", err.message);
+    }
+
+    // Don't track empty, "Unknown", or "N/A" networks
+    if (
+      !currentNetworkName ||
+      currentNetworkName === "Unknown" ||
+      currentNetworkName === "N/A"
+    ) {
+      currentNetworkName = null;
+    }
+
+    console.log(
+      "Tracking network:",
+      currentNetworkName,
+      "on interface:",
+      currentInterface
+    );
 
     // compute increase since last snapshots
     const lastRx = data[dateKey].last_rx || totalRx;
@@ -361,6 +405,32 @@ async function monitorNetwork() {
     data[dateKey].tx_bytes = (data[dateKey].tx_bytes || 0) + incTx;
     data[dateKey].last_rx = totalRx;
     data[dateKey].last_tx = totalTx;
+
+    // Initialize networks object if it doesn't exist
+    if (!data[dateKey].networks) {
+      data[dateKey].networks = {};
+    }
+
+    // Track network-specific usage (only if we have a valid network name)
+    if (currentNetworkName) {
+      if (!data[dateKey].networks[currentNetworkName]) {
+        data[dateKey].networks[currentNetworkName] = {
+          interface: currentInterface,
+          rx_tx_bytes: 0,
+          rx_bytes: 0,
+          tx_bytes: 0,
+          firstSeen: now,
+          lastSeen: now,
+        };
+      }
+
+      // Update this network's usage
+      data[dateKey].networks[currentNetworkName].rx_tx_bytes += incTotal;
+      data[dateKey].networks[currentNetworkName].rx_bytes += incRx;
+      data[dateKey].networks[currentNetworkName].tx_bytes += incTx;
+      data[dateKey].networks[currentNetworkName].lastSeen = now;
+      data[dateKey].networks[currentNetworkName].interface = currentInterface;
+    }
 
     writeData(data);
 

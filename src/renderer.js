@@ -17,6 +17,7 @@ const noNetworkScreen = document.getElementById("no-network-screen");
 
 // Used networks elements
 const networkListEl = document.getElementById("network-list");
+const networkSummaryEl = document.getElementById("network-summary");
 
 // View toggle elements
 const listViewBtn = document.getElementById("list-view-btn");
@@ -24,6 +25,7 @@ const gridViewBtn = document.getElementById("grid-view-btn");
 
 // View state
 let currentView = "grid"; // "grid" or "list"
+let selectedHistoryDate = null; // Track which date is selected in history
 
 // Helper function to get local date in YYYY-MM-DD format (for storage)
 function getLocalDateKey(date) {
@@ -144,9 +146,27 @@ function renderListView(data, selectedUnit) {
   const entries = Object.entries(data).sort((a, b) => b[0].localeCompare(a[0]));
 
   entries.forEach(([date, obj]) => {
+    const isSelected = date === selectedHistoryDate;
     const row = document.createElement("tr");
-    row.className =
-      "border-b border-gray-200 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors duration-150";
+    row.className = `border-b border-gray-200 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors duration-150 cursor-pointer ${
+      isSelected ? "bg-purple-50 dark:bg-purple-900/20" : ""
+    }`;
+
+    // Add click handler to load networks for this date
+    row.addEventListener("click", async () => {
+      selectedHistoryDate = date;
+      await loadUsedNetworks(date);
+      // Re-render history view only to update visual selection
+      const data = await window.electronAPI.getDailyData();
+      const selectedUnit = unitSelector.value;
+      if (currentView === "list") {
+        renderListView(data, selectedUnit);
+      } else {
+        const today = getLocalDateKey();
+        renderGridView(data, selectedUnit, today);
+      }
+    });
+
     row.innerHTML = `
       <td class="px-4 py-4 text-sm text-gray-900 text-center">${formatDateForDisplay(
         date
@@ -214,12 +234,30 @@ function renderGridView(data, selectedUnit, today) {
 
     monthEntries.forEach((entry) => {
       const isToday = entry.date === today;
+      const isSelected = entry.date === selectedHistoryDate;
       const card = document.createElement("div");
-      card.className = `relative p-4 rounded-xl border transition-all duration-200 ${
+      card.className = `relative p-4 rounded-xl border transition-all duration-200 cursor-pointer ${
         isToday
           ? "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700 shadow-lg shadow-blue-100 dark:shadow-blue-900/20"
+          : isSelected
+          ? "bg-purple-50 dark:bg-purple-900/20 border-purple-300 dark:border-purple-600 shadow-md"
           : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:shadow-md"
       }`;
+
+      // Add click handler to load networks for this date
+      card.addEventListener("click", async () => {
+        selectedHistoryDate = entry.date;
+        await loadUsedNetworks(entry.date);
+        // Re-render history view only to update visual selection
+        const data = await window.electronAPI.getDailyData();
+        const today = getLocalDateKey();
+        const selectedUnit = unitSelector.value;
+        if (currentView === "list") {
+          renderListView(data, selectedUnit);
+        } else {
+          renderGridView(data, selectedUnit, today);
+        }
+      });
 
       card.innerHTML = `
         <div class="flex items-center justify-between mb-3">
@@ -238,6 +276,8 @@ function renderGridView(data, selectedUnit, today) {
           ${
             isToday
               ? '<span class="px-2 py-1 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/50 rounded-full">Today</span>'
+              : isSelected
+              ? '<span class="px-2 py-1 text-xs font-medium text-purple-600 dark:text-purple-400 bg-purple-100 dark:bg-purple-900/50 rounded-full">Selected</span>'
               : ""
           }
         </div>
@@ -453,6 +493,7 @@ let lastNetworkState = null;
 let connectionStartTime = null;
 let uptimeInterval = null;
 let wasOffline = false; // Track if we were previously offline
+let lastConnectedNetwork = null; // Track the last connected network name for reload detection
 
 // Function to format uptime from milliseconds
 function formatUptime(ms) {
@@ -539,6 +580,28 @@ async function monitorNetwork() {
         lastNetworkState.signalStrength !== currentState.signalStrength;
 
       if (stateChanged) {
+        // Check if this is a network switch (different network name)
+        const networkSwitched =
+          lastConnectedNetwork &&
+          lastConnectedNetwork !== currentState.networkName &&
+          currentState.networkName !== "N/A";
+
+        if (networkSwitched) {
+          console.log(
+            `Network switched from ${lastConnectedNetwork} to ${currentState.networkName} - reloading app...`
+          );
+          // Reload the app once when network switches
+          setTimeout(() => {
+            location.reload();
+          }, 500);
+          return;
+        }
+
+        // Update last connected network
+        if (currentState.networkName !== "N/A") {
+          lastConnectedNetwork = currentState.networkName;
+        }
+
         // Network changed - reset connection start time
         connectionStartTime = Date.now();
 
@@ -574,28 +637,57 @@ setInterval(monitorNetwork, 30000);
 // Connected devices functionality
 let lastDeviceCount = 0;
 
-async function loadUsedNetworks() {
+async function loadUsedNetworks(selectedDate = null) {
   try {
     // Get current network info
     const networkInfo = await window.electronAPI.getNetworkInfo();
 
-    // Get today's usage data
+    // Get usage data
     const data = await window.electronAPI.getDailyData();
     const today = getLocalDateKey();
-    const todayData = data[today] || {
+
+    // Use selectedDate if provided, otherwise use today
+    const dateToShow = selectedDate || today;
+    const isShowingToday = dateToShow === today;
+
+    const dateData = data[dateToShow] || {
       rx_tx_bytes: 0,
       rx_bytes: 0,
       tx_bytes: 0,
+      networks: {},
     };
 
     // Clear existing network list
     networkListEl.innerHTML = "";
 
-    if (!networkInfo || networkInfo.networkName === "N/A") {
+    // Get all networks used on the selected date
+    const networks = dateData.networks || {};
+    const networkEntries = Object.entries(networks);
+
+    // Filter out "Unknown" or invalid networks
+    const validNetworks = networkEntries.filter(([name]) => {
+      const lowerName = name.toLowerCase();
+      return (
+        name &&
+        name !== "Unknown" &&
+        name !== "N/A" &&
+        lowerName !== "unknown" &&
+        lowerName !== "n/a"
+      );
+    });
+
+    if (validNetworks.length === 0) {
+      networkSummaryEl.textContent = isShowingToday
+        ? "No networks used today"
+        : `No networks used on ${formatDateForDisplay(dateToShow)}`;
       networkListEl.innerHTML = `
         <div class="text-center py-8 text-slate-400">
           <i data-feather="wifi-off" class="w-12 h-12 mx-auto mb-3 opacity-50"></i>
-          <p class="text-sm">No network connected</p>
+          <p class="text-sm">${
+            isShowingToday
+              ? "No networks used today"
+              : "No networks used on this date"
+          }</p>
         </div>
       `;
       // Re-initialize Feather icons
@@ -605,169 +697,36 @@ async function loadUsedNetworks() {
       return;
     }
 
-    // Determine network type and icon
-    let networkIcon = "wifi";
-    let iconColor = "text-blue-400";
-    let iconBgColor = "bg-blue-500/20";
-    let networkType = "Wi-Fi";
+    // Update summary text based on whether we're showing today or a historical date
+    const currentNetworkName = networkInfo?.networkName || "None";
+    const isConnected =
+      isShowingToday &&
+      validNetworks.some(([name]) => name === currentNetworkName);
 
-    const interfaceName = (networkInfo.interface || "").toLowerCase();
-    const networkName = (networkInfo.networkName || "").toLowerCase();
-
-    // Debug: Log the network name to help identify patterns
-    console.log(
-      "Detecting network - Name:",
-      networkName,
-      "Interface:",
-      interfaceName
-    );
-
-    // Check if it's a mobile hotspot (more comprehensive detection)
-    const mobileKeywords = [
-      "phone",
-      "mobile",
-      "hotspot",
-      "iphone",
-      "android",
-      "samsung",
-      "xiaomi",
-      "oneplus",
-      "oppo",
-      "vivo",
-      "realme",
-      "pixel",
-      "redmi",
-      "poco",
-      "moto",
-      "nokia",
-      "huawei",
-      "honor",
-      "asus phone",
-      "rog phone",
-      "nothing phone",
-      "galaxy", // Samsung Galaxy devices
-      // Common mobile hotspot patterns
-      "'s phone",
-      "'s iphone",
-      "'s samsung",
-      "'s android",
-      "wifi direct",
-      "direct-",
-      "androidap",
-    ];
-
-    const isMobileHotspot = mobileKeywords.some((keyword) =>
-      networkName.includes(keyword.toLowerCase())
-    );
-
-    console.log(
-      "Is mobile hotspot:",
-      isMobileHotspot,
-      "- Matched keywords:",
-      mobileKeywords.filter((k) => networkName.includes(k.toLowerCase()))
-    );
-
-    if (isMobileHotspot) {
-      networkIcon = "smartphone";
-      iconColor = "text-purple-400";
-      iconBgColor = "bg-purple-500/20";
-      networkType = "Mobile Hotspot";
-    }
-    // Check if it's ethernet
-    else if (
-      interfaceName.includes("ethernet") ||
-      interfaceName.includes("eth") ||
-      interfaceName.includes("lan")
-    ) {
-      networkIcon = "hard-drive";
-      iconColor = "text-green-400";
-      iconBgColor = "bg-green-500/20";
-      networkType = "Ethernet";
-    }
-    // Check if it's PC shared network
-    else if (
-      networkName.includes("pc") ||
-      networkName.includes("desktop") ||
-      networkName.includes("laptop") ||
-      networkName.includes("computer")
-    ) {
-      networkIcon = "monitor";
-      iconColor = "text-orange-400";
-      iconBgColor = "bg-orange-500/20";
-      networkType = "PC Network";
-    }
-    // Default to router/wifi for everything else (typical router names or any wifi network)
-    else {
-      networkIcon = "wifi";
-      iconColor = "text-cyan-400";
-      iconBgColor = "bg-cyan-500/20";
-      networkType = "Router";
+    if (isShowingToday) {
+      if (isConnected) {
+        networkSummaryEl.innerHTML = `Total networks used today: ${validNetworks.length} | Connected to: <span class="text-green-400 font-bold">${currentNetworkName}</span>`;
+      } else {
+        networkSummaryEl.textContent = `Total networks used today: ${validNetworks.length}`;
+      }
+    } else {
+      networkSummaryEl.innerHTML = `Networks used on <span class="text-blue-400 font-bold">${formatDateForDisplay(
+        dateToShow
+      )}</span>: ${validNetworks.length}`;
     }
 
-    // Create network list tile
-    const networkTile = document.createElement("div");
-    networkTile.className =
-      "p-4 rounded-xl bg-slate-700/50 border border-slate-600/50 hover:bg-slate-600/50 hover:border-slate-500/60 transition-all duration-300 cursor-pointer";
-    networkTile.setAttribute("data-network-tile", "true");
+    // Sort networks by usage (highest first)
+    validNetworks.sort(([, a], [, b]) => b.rx_tx_bytes - a.rx_tx_bytes);
 
-    networkTile.innerHTML = `
-      <div class="flex items-start gap-3">
-        <!-- Icon with animated green dot -->
-        <div class="flex-shrink-0 relative">
-          <div class="p-2 ${iconBgColor} rounded-lg">
-            <i data-feather="${networkIcon}" class="w-5 h-5 ${iconColor}"></i>
-          </div>
-          <!-- Animated green dot for connected status -->
-          <div class="absolute -top-1 -right-1 flex h-3 w-3">
-            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-            <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-          </div>
-        </div>
-        
-        <!-- Content -->
-        <div class="flex-1 min-w-0">
-          <!-- Row 1: Network Name and Type/Interface -->
-          <div class="flex items-start justify-between mb-2">
-            <div class="flex-1 min-w-0 mr-3">
-              <h4 class="text-white font-semibold text-sm truncate mb-1">${
-                networkInfo.networkName
-              }</h4>
-              <div class="text-slate-400 text-xs">
-                ${networkType} • ${networkInfo.interface || "N/A"}
-              </div>
-            </div>
-            
-            <!-- Data Usage and Uptime stacked on right -->
-            <div class="flex flex-col items-end gap-1 flex-shrink-0">
-              <!-- Data Usage -->
-              <div class="flex items-center gap-1">
-                <i data-feather="arrow-down-circle" class="w-4 h-4 text-green-400"></i>
-                <span class="text-green-400 font-medium text-sm" data-network-usage>${bytesToHuman(
-                  todayData.rx_tx_bytes,
-                  unitSelector.value
-                )}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-
-    networkListEl.appendChild(networkTile);
+    // Create a tile for each network
+    validNetworks.forEach(([networkName, networkData], index) => {
+      createNetworkTile(networkName, networkData, networkInfo, index);
+    });
 
     // Re-initialize Feather icons
     if (window.feather) {
       window.feather.replace();
     }
-
-    // Animate network tile
-    networkTile.style.opacity = "0";
-    networkTile.style.transform = "translateY(10px)";
-    setTimeout(() => {
-      networkTile.style.transition = "all 0.3s ease-out";
-      networkTile.style.opacity = "1";
-      networkTile.style.transform = "translateY(0)";
-    }, 100);
   } catch (error) {
     console.error("Failed to load used networks:", error);
     networkListEl.innerHTML = `
@@ -783,12 +742,195 @@ async function loadUsedNetworks() {
   }
 }
 
-// Function to update network data usage and uptime without reloading the entire list
+// Helper function to create a network tile
+function createNetworkTile(
+  networkName,
+  networkData,
+  currentNetworkInfo,
+  index
+) {
+  // Determine if this is the currently connected network
+  const isCurrentNetwork =
+    currentNetworkInfo && currentNetworkInfo.networkName === networkName;
+
+  // Determine network type and icon
+  let networkIcon = "wifi";
+  let iconColor = "text-blue-400";
+  let iconBgColor = "bg-blue-500/20";
+  let networkType = "Wi-Fi";
+
+  const interfaceName = (networkData.interface || "").toLowerCase();
+  const networkNameLower = networkName.toLowerCase();
+
+  // Debug: Log the network name to help identify patterns
+  console.log(
+    "Detecting network - Name:",
+    networkName,
+    "Interface:",
+    interfaceName
+  );
+
+  // Check if it's a mobile hotspot (more comprehensive detection)
+  const mobileKeywords = [
+    "phone",
+    "mobile",
+    "hotspot",
+    "iphone",
+    "android",
+    "samsung",
+    "xiaomi",
+    "oneplus",
+    "oppo",
+    "vivo",
+    "realme",
+    "pixel",
+    "redmi",
+    "poco",
+    "moto",
+    "nokia",
+    "huawei",
+    "honor",
+    "asus phone",
+    "rog phone",
+    "nothing phone",
+    "galaxy", // Samsung Galaxy devices
+    // Common mobile hotspot patterns
+    "'s phone",
+    "'s iphone",
+    "'s samsung",
+    "'s android",
+    "wifi direct",
+    "direct-",
+    "androidap",
+  ];
+
+  const isMobileHotspot = mobileKeywords.some((keyword) =>
+    networkNameLower.includes(keyword.toLowerCase())
+  );
+
+  if (isMobileHotspot) {
+    networkIcon = "smartphone";
+    iconColor = "text-purple-400";
+    iconBgColor = "bg-purple-500/20";
+    networkType = "Mobile Hotspot";
+  }
+  // Check if it's ethernet
+  else if (
+    interfaceName.includes("ethernet") ||
+    interfaceName.includes("eth") ||
+    interfaceName.includes("lan")
+  ) {
+    networkIcon = "hard-drive";
+    iconColor = "text-green-400";
+    iconBgColor = "bg-green-500/20";
+    networkType = "Ethernet";
+  }
+  // Check if it's PC shared network
+  else if (
+    networkNameLower.includes("pc") ||
+    networkNameLower.includes("desktop") ||
+    networkNameLower.includes("laptop") ||
+    networkNameLower.includes("computer")
+  ) {
+    networkIcon = "monitor";
+    iconColor = "text-orange-400";
+    iconBgColor = "bg-orange-500/20";
+    networkType = "PC Network";
+  }
+  // Default to router/wifi for everything else
+  else {
+    networkIcon = "wifi";
+    iconColor = "text-cyan-400";
+    iconBgColor = "bg-cyan-500/20";
+    networkType = "Router";
+  }
+
+  // Create network list tile
+  const networkTile = document.createElement("div");
+  networkTile.className =
+    "p-4 rounded-xl bg-slate-700/50 border border-slate-600/50 hover:bg-slate-600/50 hover:border-slate-500/60 transition-all duration-300 cursor-pointer";
+  networkTile.setAttribute("data-network-tile", networkName);
+
+  networkTile.innerHTML = `
+      <div class="flex items-start gap-3">
+        <!-- Icon with optional animated green dot for current network -->
+        <div class="flex-shrink-0 relative">
+          <div class="p-2 ${iconBgColor} rounded-lg">
+            <i data-feather="${networkIcon}" class="w-5 h-5 ${iconColor}"></i>
+          </div>
+          ${
+            isCurrentNetwork
+              ? `
+          <!-- Animated green dot for connected status -->
+          <div class="absolute -top-1 -right-1 flex h-3 w-3">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+          </div>
+          `
+              : ""
+          }
+        </div>
+        
+        <!-- Content -->
+        <div class="flex-1 min-w-0">
+          <!-- Row 1: Network Name and Type/Interface -->
+          <div class="flex items-start justify-between mb-2">
+            <div class="flex-1 min-w-0 mr-3">
+              <h4 class="text-white font-semibold text-sm truncate mb-1">
+                ${networkName}
+              </h4>
+              <div class="text-slate-400 text-xs">
+                ${networkType} • ${networkData.interface || "N/A"}
+              </div>
+            </div>
+            
+            <!-- Data Usage on right -->
+            <div class="flex flex-col items-end gap-1 flex-shrink-0">
+              <!-- Total Usage -->
+              <div class="flex items-center gap-1">
+                <i data-feather="activity" class="w-4 h-4 text-blue-400"></i>
+                <span class="text-blue-400 font-medium text-sm" data-network-usage="${networkName}">${bytesToHuman(
+    networkData.rx_tx_bytes,
+    unitSelector.value
+  )}</span>
+              </div>
+              <!-- Download -->
+              <div class="flex items-center gap-1 text-xs">
+                <i data-feather="arrow-down" class="w-3 h-3 text-green-400"></i>
+                <span class="text-slate-300">${bytesToHuman(
+                  networkData.rx_bytes,
+                  unitSelector.value
+                )}</span>
+              </div>
+              <!-- Upload -->
+              <div class="flex items-center gap-1 text-xs">
+                <i data-feather="arrow-up" class="w-3 h-3 text-orange-400"></i>
+                <span class="text-slate-300">${bytesToHuman(
+                  networkData.tx_bytes,
+                  unitSelector.value
+                )}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+  networkListEl.appendChild(networkTile);
+
+  // Animate network tile
+  networkTile.style.opacity = "0";
+  networkTile.style.transform = "translateY(10px)";
+  setTimeout(() => {
+    networkTile.style.transition = "all 0.3s ease-out";
+    networkTile.style.opacity = "1";
+    networkTile.style.transform = "translateY(0)";
+  }, 100 + index * 50); // Stagger animations
+}
+
+// Function to update network data usage without reloading the entire list
 async function updateUsedNetworkData() {
   try {
-    const networkTile = document.querySelector("[data-network-tile]");
-    if (!networkTile) return; // No network tile to update
-
     // Get today's usage data
     const data = await window.electronAPI.getDailyData();
     const today = getLocalDateKey();
@@ -796,18 +938,29 @@ async function updateUsedNetworkData() {
       rx_tx_bytes: 0,
       rx_bytes: 0,
       tx_bytes: 0,
+      networks: {},
     };
 
-    // Update data usage
-    const usageElement = networkTile.querySelector("[data-network-usage]");
-    if (usageElement) {
-      usageElement.textContent = bytesToHuman(
-        todayData.rx_tx_bytes,
-        unitSelector.value
-      );
-    }
+    const networks = todayData.networks || {};
 
-    // Uptime is already being updated by the separate uptime interval
+    // Update each network tile with its current data
+    Object.entries(networks).forEach(([networkName, networkData]) => {
+      const networkTile = document.querySelector(
+        `[data-network-tile="${networkName}"]`
+      );
+      if (networkTile) {
+        // Update total usage
+        const usageElement = networkTile.querySelector(
+          `[data-network-usage="${networkName}"]`
+        );
+        if (usageElement) {
+          usageElement.textContent = bytesToHuman(
+            networkData.rx_tx_bytes,
+            unitSelector.value
+          );
+        }
+      }
+    });
   } catch (error) {
     console.error("Failed to update network data:", error);
   }
@@ -1124,7 +1277,7 @@ document
 // Initial load
 refreshUI();
 loadNetworkInfo();
-loadUsedNetworks();
+loadUsedNetworks(selectedHistoryDate);
 
 // Set dark mode as default
 document.documentElement.classList.add("dark");
