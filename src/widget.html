@@ -18,7 +18,7 @@
         }
 
         .widget-container {
-            width: 180px;
+            width: 200px;
             height: 50px;
             background: rgba(15, 23, 42, 0.95);
             backdrop-filter: blur(20px);
@@ -28,6 +28,10 @@
             position: relative;
             overflow: hidden;
             user-select: none;
+            padding: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }
 
         .widget-container::before {
@@ -41,9 +45,7 @@
             background: linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899);
             opacity: 0.8;
             height: 3px;
-            /* increase height on hover */
             transition: all 0.3s ease;
-            /* important for smooth animation */
         }
 
         .widget-container:hover {
@@ -55,6 +57,18 @@
             transform: scale(1);
         }
 
+        .speed-section {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.2s ease;
+            border-radius: 6px;
+            padding: 4px;
+        }
+
+        .speed-section:hover {
+            background: rgba(71, 85, 105, 0.2);
+        }
 
         .speed-display {
             font-weight: 600;
@@ -62,6 +76,12 @@
             color: #f8fafc;
             text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
             letter-spacing: -0.3px;
+            transition: all 0.2s ease;
+        }
+
+        .speed-display:hover {
+            transform: scale(1.05);
+            color: #60a5fa;
         }
 
         .speed-unit {
@@ -72,36 +92,35 @@
         }
 
         .network-icon {
+            width: 12px;
+            height: 12px;
             color: #60a5fa;
             filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+            transition: all 0.2s ease;
         }
 
-        .pulse-indicator {
-            width: 4px;
-            height: 4px;
-            border-radius: 50%;
-            background: #10b981;
-            animation: pulse 2s infinite;
+        .network-icon:hover {
+            transform: scale(1.15);
+            filter: drop-shadow(0 2px 4px rgba(96, 165, 250, 0.5));
         }
 
-        @keyframes pulse {
-
-            0%,
-            100% {
-                opacity: 1;
-            }
-
-            50% {
-                opacity: 0.5;
-            }
+        .separator {
+            width: 1px;
+            height: 24px;
+            background: #475569;
+            margin: 0 6px;
+            transition: all 0.3s ease;
         }
 
-        /* Allow dragging only on body, but not on interactive content */
+        .widget-container:hover .separator {
+            background: linear-gradient(to bottom, #3b82f6, #8b5cf6);
+            box-shadow: 0 0 8px rgba(59, 130, 246, 0.5);
+        }
+
         body {
             -webkit-app-region: no-drag;
         }
 
-        /* Drag handle - visible on hover in top center */
         .drag-handle {
             -webkit-app-region: drag;
             position: absolute;
@@ -121,6 +140,10 @@
             transition: all 0.3s ease;
             backdrop-filter: blur(10px);
             border: 2px solid rgba(148, 163, 184, 0.5);
+
+            & svg {
+                color: white;
+            }
         }
 
         .widget-container:hover .drag-handle {
@@ -141,60 +164,20 @@
             color: #e2e8f0;
         }
 
-        /* Make widget container interactive */
-        .widget-container {
-            -webkit-app-region: no-drag;
-            cursor: pointer;
-        }
-
-        /* Add hover effects to speed displays */
-        .speed-display {
-            transition: all 0.2s ease;
-        }
-
-        .speed-display:hover {
-            transform: scale(1.05);
-            color: #60a5fa;
-        }
-
-        /* Add hover effects to icons */
-        .network-icon {
-            transition: all 0.2s ease;
-        }
-
-        .network-icon:hover {
-            transform: scale(1.15);
-            filter: drop-shadow(0 2px 4px rgba(96, 165, 250, 0.5));
-        }
-
-        /* Add subtle hover effect to separator */
-        .separator {
-            transition: all 0.3s ease;
-        }
-
-        .widget-container:hover .separator {
-            background: linear-gradient(to bottom, #3b82f6, #8b5cf6);
-            box-shadow: 0 0 8px rgba(59, 130, 246, 0.5);
-        }
-
-        /* Add hover effect to speed sections */
-        .speed-section {
-            transition: all 0.2s ease;
-            border-radius: 6px;
-            padding: 4px;
-        }
-
-        .speed-section:hover {
-            background: rgba(71, 85, 105, 0.2);
-        }
-
         button {
             -webkit-app-region: no-drag;
         }
 
-        /* Speed change animation */
-        .speed-change {
-            animation: speedPulse 0.6s ease-out;
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
         }
 
         @keyframes speedPulse {
@@ -210,150 +193,171 @@
                 transform: scale(1);
             }
         }
+
+        .speed-change {
+            animation: speedPulse 0.6s ease-out;
+        }
     </style>
 </head>
 
 <body>
-    <div class="widget-container p-2">
-        <!-- Drag handle with icon - appears on hover in top right -->
+    <div class="widget-container">
+        <!-- Drag handle -->
         <div class="drag-handle">
-            <i data-feather="move" class="drag-icon"></i>
+            <svg class="network-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M5 12h14M17 10l2 2-2 2" />
+                <path d="M7 10l-2 2 2 2" />
+                <path d="M12 5v14M10 7l2-2 2 2" />
+                <path d="M10 17l2 2 2-2" />
+            </svg>
         </div>
-        <div class="flex items-center justify-between h-full">
-            <!-- Download Speed -->
-            <div class="flex items-center space-x-1 speed-section">
-                <i data-feather="download" class="network-icon w-3 h-3 "></i>
-                <div>
-                    <div class="flex items-baseline">
-                        <span id="download-speed" class="speed-display">--</span>
-                        <span class="speed-unit">KB/s</span>
-                    </div>
+
+        <!-- Download Speed -->
+        <div class="speed-section">
+            <svg class="network-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7,10 12,15 17,10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            <div class="speed-info">
+                <div style="display: flex; align-items: baseline;">
+                    <span id="download-speed" class="speed-display">--</span>
+                    <span class="speed-unit">KB/s</span>
                 </div>
             </div>
+        </div>
 
-            <!-- Separator -->
-            <div class="w-px h-6 bg-slate-600 mx-1 separator"></div>
+        <!-- Separator -->
+        <div class="separator"></div>
 
-            <!-- Upload Speed -->
-            <div class="flex items-center space-x-1 speed-section">
-                <i data-feather="upload" class="network-icon w-3 h-3"></i>
-                <div>
-                    <div class="flex items-baseline">
-                        <span id="upload-speed" class="speed-display">--</span>
-                        <span class="speed-unit">KB/s</span>
-                    </div>
+        <!-- Upload Speed -->
+        <div class="speed-section">
+            <svg class="network-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17,8 12,3 7,8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            <div class="speed-info">
+                <div style="display: flex; align-items: baseline;">
+                    <span id="upload-speed" class="speed-display">--</span>
+                    <span class="speed-unit">KB/s</span>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        const downloadSpeedEl = document.getElementById('download-speed');
-        const uploadSpeedEl = document.getElementById('upload-speed');
-        let lastDownloadSpeed = 0;
-        let lastUploadSpeed = 0;
-
-        function bytesToHuman(b) {
-            if (b === undefined || b === null) return '--';
-            const units = ['B', 'KB', 'MB', 'GB'];
-            let v = b, i = 0;
-            while (v >= 1024 && i < units.length - 1) {
-                v /= 1024;
-                i++;
-            }
-            return {
-                value: v.toFixed(v >= 100 ? 0 : v >= 10 ? 1 : 2),
-                unit: units[i]
-            };
-        }
-
-        window.electronAPI.onNetworkUpdate((p) => {
-            // Handle download speed
-            const downloadSpeedData = bytesToHuman(p.downloadSpeedBytesPerSec);
-            const newDownloadSpeed = parseFloat(downloadSpeedData.value);
-
-            if (Math.abs(newDownloadSpeed - lastDownloadSpeed) > 10) {
-                downloadSpeedEl.classList.add('speed-change');
-                setTimeout(() => downloadSpeedEl.classList.remove('speed-change'), 600);
-            }
-
-            downloadSpeedEl.textContent = downloadSpeedData.value;
-            downloadSpeedEl.nextElementSibling.textContent = `${downloadSpeedData.unit}/s`;
-            lastDownloadSpeed = newDownloadSpeed;
-
-            // Handle upload speed
-            const uploadSpeedData = bytesToHuman(p.uploadSpeedBytesPerSec);
-            const newUploadSpeed = parseFloat(uploadSpeedData.value);
-
-            if (Math.abs(newUploadSpeed - lastUploadSpeed) > 10) {
-                uploadSpeedEl.classList.add('speed-change');
-                setTimeout(() => uploadSpeedEl.classList.remove('speed-change'), 600);
-            }
-
-            uploadSpeedEl.textContent = uploadSpeedData.value;
-            uploadSpeedEl.nextElementSibling.textContent = `${uploadSpeedData.unit}/s`;
-            lastUploadSpeed = newUploadSpeed;
-        });
-
-        // Listen for widget style updates
-        window.electronAPI.onWidgetStyleUpdate((settings) => {
-            const widgetContainer = document.querySelector('.widget-container');
-            const speedDisplays = document.querySelectorAll('.speed-display');
-            const speedUnits = document.querySelectorAll('.speed-unit');
-            const networkIcons = document.querySelectorAll('.network-icon');
-
-            if (widgetContainer) {
-                widgetContainer.style.width = `${settings.width}px`;
-                widgetContainer.style.height = `${settings.height}px`;
-                widgetContainer.style.background = `rgba(${hexToRgb(settings.bgColor)}, ${settings.opacity})`;
-                widgetContainer.style.backdropFilter = `blur(20px)`;
-            }
-
-            speedDisplays.forEach(display => {
-                if (display) {
-                    display.style.color = settings.textColor;
-                    display.style.fontSize = `${settings.fontSize}px`;
-                }
-            });
-
-            speedUnits.forEach(unit => {
-                if (unit) {
-                    unit.style.color = settings.textColor;
-                    unit.style.fontSize = `${Math.max(8, settings.fontSize - 4)}px`;
-                }
-            });
-
-            networkIcons.forEach(icon => {
-                if (icon) {
-                    icon.style.color = settings.textColor;
-                }
-            });
-
-            // Update window size
-            if (window.electronAPI && window.electronAPI.updateWindowSize) {
-                window.electronAPI.updateWindowSize(settings.width + 20, settings.height + 10);
-            }
-        });
-
-        // Helper function to convert hex to rgb
-        function hexToRgb(hex) {
-            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-            return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '15, 23, 42';
-        }
-
-        // Add double-click handler to widget container
-        document.querySelector('.widget-container').addEventListener('dblclick', (e) => {
-            // Don't trigger if double-clicking the drag handle
-            if (!e.target.classList.contains('drag-handle')) {
-                if (window.electronAPI && window.electronAPI.openMainApp) {
-                    window.electronAPI.openMainApp();
-                }
-            }
-        });
-
-        // Initialize Feather icons
         feather.replace();
     </script>
+</body>
+<script>
+    const downloadSpeedEl = document.getElementById('download-speed');
+    const uploadSpeedEl = document.getElementById('upload-speed');
+    let lastDownloadSpeed = 0;
+    let lastUploadSpeed = 0;
+
+    function bytesToHuman(b) {
+        if (b === undefined || b === null) return '--';
+        const units = ['B', 'KB', 'MB', 'GB'];
+        let v = b, i = 0;
+        while (v >= 1024 && i < units.length - 1) {
+            v /= 1024;
+            i++;
+        }
+        return {
+            value: v.toFixed(v >= 100 ? 0 : v >= 10 ? 1 : 2),
+            unit: units[i]
+        };
+    }
+
+    window.electronAPI.onNetworkUpdate((p) => {
+        // Handle download speed
+        const downloadSpeedData = bytesToHuman(p.downloadSpeedBytesPerSec);
+        const newDownloadSpeed = parseFloat(downloadSpeedData.value);
+
+        if (Math.abs(newDownloadSpeed - lastDownloadSpeed) > 10) {
+            downloadSpeedEl.classList.add('speed-change');
+            setTimeout(() => downloadSpeedEl.classList.remove('speed-change'), 600);
+        }
+
+        downloadSpeedEl.textContent = downloadSpeedData.value;
+        downloadSpeedEl.nextElementSibling.textContent = `${downloadSpeedData.unit}/s`;
+        lastDownloadSpeed = newDownloadSpeed;
+
+        // Handle upload speed
+        const uploadSpeedData = bytesToHuman(p.uploadSpeedBytesPerSec);
+        const newUploadSpeed = parseFloat(uploadSpeedData.value);
+
+        if (Math.abs(newUploadSpeed - lastUploadSpeed) > 10) {
+            uploadSpeedEl.classList.add('speed-change');
+            setTimeout(() => uploadSpeedEl.classList.remove('speed-change'), 600);
+        }
+
+        uploadSpeedEl.textContent = uploadSpeedData.value;
+        uploadSpeedEl.nextElementSibling.textContent = `${uploadSpeedData.unit}/s`;
+        lastUploadSpeed = newUploadSpeed;
+    });
+
+    // Listen for widget style updates
+    window.electronAPI.onWidgetStyleUpdate((settings) => {
+        const widgetContainer = document.querySelector('.widget-container');
+        const speedDisplays = document.querySelectorAll('.speed-display');
+        const speedUnits = document.querySelectorAll('.speed-unit');
+        const networkIcons = document.querySelectorAll('.network-icon');
+
+        if (widgetContainer) {
+            widgetContainer.style.width = `${settings.width}px`;
+            widgetContainer.style.height = `${settings.height}px`;
+            widgetContainer.style.background = `rgba(${hexToRgb(settings.bgColor)}, ${settings.opacity})`;
+            widgetContainer.style.backdropFilter = `blur(20px)`;
+        }
+
+        speedDisplays.forEach(display => {
+            if (display) {
+                display.style.color = settings.textColor;
+                display.style.fontSize = `${settings.fontSize}px`;
+            }
+        });
+
+        speedUnits.forEach(unit => {
+            if (unit) {
+                unit.style.color = settings.textColor;
+                unit.style.fontSize = `${Math.max(8, settings.fontSize - 4)}px`;
+            }
+        });
+
+        networkIcons.forEach(icon => {
+            if (icon) {
+                icon.style.color = settings.textColor;
+            }
+        });
+
+        // Update window size
+        if (window.electronAPI && window.electronAPI.updateWindowSize) {
+            window.electronAPI.updateWindowSize(settings.width + 20, settings.height + 10);
+        }
+    });
+
+    // Helper function to convert hex to rgb
+    function hexToRgb(hex) {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '15, 23, 42';
+    }
+
+    // Add double-click handler to widget container
+    document.querySelector('.widget-container').addEventListener('dblclick', (e) => {
+        // Don't trigger if double-clicking the drag handle
+        if (!e.target.classList.contains('drag-handle')) {
+            if (window.electronAPI && window.electronAPI.openMainApp) {
+                window.electronAPI.openMainApp();
+            }
+        }
+    });
+
+    // Initialize Feather icons
+    feather.replace();
+</script>
 </body>
 
 </html>
